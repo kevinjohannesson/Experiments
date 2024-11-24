@@ -42,11 +42,11 @@
 //     // '/'
 //   ],
 // };
-
+import Debug from "debug";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-import { i18n } from "./i18n-config";
+import { i18n } from "../i18n-config";
 
 import { match as matchLocale } from "@formatjs/intl-localematcher";
 import Negotiator from "negotiator";
@@ -68,7 +68,10 @@ function getLocale(request: NextRequest): string | undefined {
   return locale;
 }
 
+const debug = Debug("middleware");
+
 export function middleware(request: NextRequest) {
+  debug(`Middleware triggered: ${request.url}`);
   const pathname = request.nextUrl.pathname;
   // // `/_next/` and `/api/` are ignored by the watcher, but we need to ignore files in `public` manually.
   // // If you have one
@@ -80,25 +83,27 @@ export function middleware(request: NextRequest) {
   //   ].includes(pathname)
   // )
   //   return
+  if (pathname.match(/\.(svg|png|jpg|jpeg|gif|webp|css|js|txt)$/)) {
+    return;
+  }
 
   // Check if there is any supported locale in the pathname
-  const pathnameIsMissingLocale = i18n.locales.every(
-    (locale) => !pathname.startsWith(`/${locale}/`) && pathname !== `/${locale}`
+  const pathnameHasLocale = i18n.locales.some(
+    (locale) => pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`
   );
 
-  // Redirect if there is no locale
-  if (pathnameIsMissingLocale) {
-    const locale = getLocale(request);
-
-    // e.g. incoming request is /products
-    // The new URL is now /en-US/products
-    return NextResponse.redirect(
-      new URL(
-        `/${locale}${pathname.startsWith("/") ? "" : "/"}${pathname}`,
-        request.url
-      )
-    );
+  if (pathnameHasLocale) {
+    // request.nextUrl.pathname = `/foobar`;
+    // return NextResponse.redirect(request.nextUrl);
+    return;
   }
+
+  // Redirect if there is no locale
+  const locale = getLocale(request);
+  request.nextUrl.pathname = `/${locale}${pathname}`;
+  // e.g. incoming request is /products
+  // The new URL is now /en-US/products
+  return NextResponse.redirect(request.nextUrl);
 }
 
 export const config = {
