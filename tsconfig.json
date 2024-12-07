@@ -21,7 +21,8 @@
     "paths": {
       "@/*": ["./src/*"],
       "~/*": ["./*"]
-    }
+    },
+    "typeRoots": ["./node_modules/@types", "./ts-overrides.d.ts"]
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]

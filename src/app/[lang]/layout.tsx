@@ -1,5 +1,9 @@
-import { i18n, type Locale } from "../../../i18n-config";
-import "./globals.css";
+import { i18n, type Locale } from "~/i18n-config";
+import { MantineProvider } from "@mantine/core";
+import { theme } from "@/theme";
+import "@/globals.css";
+import "@mantine/core/styles.css";
+import DefaultAppShell from "@/components/common/DefaultAppShell";
 
 export const metadata = {
   title: "i18n within app router - Vercel Examples",
@@ -20,7 +24,11 @@ export default async function Root(props: {
 
   return (
     <html lang={params.lang}>
-      <body>{children}</body>
+      <body>
+        <MantineProvider theme={theme}>
+          <DefaultAppShell>{children}</DefaultAppShell>
+        </MantineProvider>
+      </body>
     </html>
   );
 }

@@ -1,0 +1,13 @@
+diff --git a/node_modules/@tanstack/form-core/dist/esm/FormApi.d.ts b/node_modules/@tanstack/form-core/dist/esm/FormApi.d.ts
+index 303e939..d88c329 100644
+--- a/node_modules/@tanstack/form-core/dist/esm/FormApi.d.ts
++++ b/node_modules/@tanstack/form-core/dist/esm/FormApi.d.ts
+@@ -11,7 +11,7 @@ export type FormValidateFn<TFormData, TFormValidator extends Validator<TFormData
+ /**
+  * @private
+  */
+-export type FormValidateOrFn<TFormData, TFormValidator extends Validator<TFormData, unknown> | undefined = undefined> = TFormValidator extends Validator<TFormData, infer TFN> ? TFN : FormValidateFn<TFormData, TFormValidator>;
++export type FormValidateOrFn<TFormData, TFormValidator extends Validator<TFormData, unknown> | undefined = undefined> = TFormValidator extends Validator<TFormData, infer TFN> ? TFN | FormValidateFn<TFormData, TFormValidator> : FormValidateFn<TFormData, TFormValidator>;
+ /**
+  * @private
+  */
