@@ -7,18 +7,38 @@ import { useStore } from "zustand";
 import { useShallow } from "zustand/shallow";
 import { Get, Paths } from "type-fest";
 
-/* Vanilla / Agnostic components */
+/* ---------------------------- */
+/*       Utility Types          */
+/* ---------------------------- */
 
-/* FieldApi */
-
+/**
+ * Extracts all possible paths within TFormData using bracket notation.
+ * Example: For { user: { name: string } }, it would include 'user' and 'user.name'.
+ */
 type FieldName<TFormData> = Paths<TFormData, { bracketNotation: true }>;
 
+/**
+ * Retrieves the type of the value at the specified field path within TFormData.
+ * Example: For TFormData = { user: { name: string } }, Get<TFormData, 'user.name'> is string.
+ */
 type FieldValue<TFormData, TName extends FieldName<TFormData>> = Get<
   TFormData,
   TName
 >;
 
+/**
+ * Defines the contract for form operations.
+ * Currently includes a method to set the value of a specific field.
+ */
 interface IFormApi<TFormData> {
+  /**
+   * Sets the value of a specified field.
+   *
+   * @template TName - The name/path of the field within TFormData.
+   * @template TValue - The type of the value corresponding to TName.
+   * @param name - The field name/path.
+   * @param value - The new value to set for the field.
+   */
   setFieldValue: <
     TName extends FieldName<TFormData>,
     TValue extends FieldValue<TFormData, TName>
@@ -28,100 +48,170 @@ interface IFormApi<TFormData> {
   ) => void;
 }
 
+/* ---------------------------- */
+/*        FieldApi Class        */
+/* ---------------------------- */
+
+/**
+ * Options required to initialize a FieldApi instance.
+ */
 interface FieldApiOptions<
   TFormData,
   TName extends FieldName<TFormData>,
   TValue extends FieldValue<TFormData, TName>
 > {
+  /**
+   * The name/path of the field this API manages.
+   */
   name: TName;
+  /**
+   * The form API instance to interact with the form state.
+   */
   formApi: IFormApi<TFormData>;
 }
 
+/**
+ * Manages operations related to a specific form field.
+ * Provides methods to set and handle changes to the field's value.
+ */
 class FieldApi<
   TFormData,
   TName extends FieldName<TFormData>,
   TValue extends FieldValue<TFormData, TName>
 > {
+  /**
+   * The name/path of the field.
+   */
   name: TName;
+  /**
+   * Reference to the form API for interacting with the form state.
+   */
   formApi: IFormApi<TFormData>;
 
+  /**
+   * Initializes a new instance of FieldApi.
+   *
+   * @param opts - Configuration options for the field API.
+   */
   constructor(opts: FieldApiOptions<TFormData, TName, TValue>) {
     this.name = opts.name;
     this.formApi = opts.formApi;
 
+    // Bind methods to preserve `this` context when passed as callbacks
     this.setValue = this.setValue.bind(this);
     this.handleChange = this.handleChange.bind(this);
   }
 
+  /**
+   * Sets the value of the field by delegating to the form API.
+   *
+   * @param value - The new value to set for the field.
+   */
   setValue(value: TValue) {
     this.formApi.setFieldValue(this.name, value);
   }
 
+  /**
+   * Handles changes to the field's value, typically from user input.
+   *
+   * @param value - The new value input by the user.
+   */
   handleChange(value: TValue) {
     this.setValue(value);
   }
 }
 
-/* FormApi */
+/* ---------------------------- */
+/*          FormApi Class       */
+/* ---------------------------- */
 
+/**
+ * Represents the state of the form, including field values and submission status.
+ */
 interface FormState<TFormData> {
   /**
-   * The current values of the form data.
+   * The current values of the form fields.
    */
   values: TFormData;
   /**
-   * A boolean indicating if the form has been submitted.
+   * Indicates whether the form has been successfully submitted.
    */
   isSubmitted: boolean;
   /**
-   * A boolean indicating if the form is currently being submitted.
+   * Indicates whether the form is in the process of being submitted.
    */
   isSubmitting: boolean;
   /**
-   * A counter for tracking the number of submission attempts.
+   * Counts the number of times the form has been submitted.
    */
   submissionAttempts: number;
 }
 
+/**
+ * Configuration options for initializing the FormApi.
+ */
 interface FormApiOptions<
   TFormData,
   TSubmitResult extends unknown | void = void
 > {
   /**
-   * Default values for the form.
+   * The default values for the form fields.
    */
-  defaultValues?: TFormData;
+  defaultValues: TFormData;
   /**
-   * Submit callback
-   * @param args
-   * @returns
+   * Callback function to handle form submission.
+   *
+   * @param args - Contains the current form values.
+   * @returns The result of the submission, which can be a promise.
    */
   onSubmit?: (args: {
     values: TFormData;
   }) => TSubmitResult | Promise<TSubmitResult>;
 }
 
+/**
+ * Manages the overall form state and handles form-level operations like submission.
+ * Implements the IFormApi interface to ensure type-safe interactions.
+ */
 class FormApi<TFormData> implements IFormApi<TFormData> {
+  /**
+   * Zustand store instance managing the form state.
+   */
   store: StoreApi<FormState<TFormData>>;
+  /**
+   * Configuration options provided during initialization.
+   */
   options: FormApiOptions<TFormData>;
 
-  constructor(opts?: FormApiOptions<TFormData>) {
+  /**
+   * Initializes a new instance of FormApi.
+   *
+   * @param opts - Configuration options for the form API.
+   */
+  constructor(opts: FormApiOptions<TFormData>) {
     console.log("[FormApi]");
     this.options = opts || {};
 
+    // Initialize Zustand store with default form state
     this.store = createStore<FormState<TFormData>>(() => ({
       isSubmitted: false,
       isSubmitting: false,
       submissionAttempts: 0,
-      values: opts?.defaultValues ?? ({} as never),
+      values: opts.defaultValues,
     }));
 
+    // Bind methods to preserve `this` context when passed as callbacks
     this.setFieldValue = this.setFieldValue.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
   }
 
   /**
-   * Handles setting of field value
+   * Sets the value of a specified field within the form state.
+   *
+   * @template TName - The name/path of the field to update.
+   * @template TValue - The type of the value to set.
+   * @param name - The field name/path.
+   * @param value - The new value for the field.
    */
   setFieldValue<
     TName extends FieldName<TFormData>,
@@ -130,13 +220,28 @@ class FormApi<TFormData> implements IFormApi<TFormData> {
     this.store.setState((s) => ({
       values: {
         ...s.values,
-        [name]: value, // _.isFunction(updater) ? updater() : updater,
+        //TODO this is a very simple implementation that does not work with nested values yet and fricks the type
+        [name]: value, // Update the specific field with the new value
       },
     }));
   }
 
   /**
-   * Handles the form submission
+   * Retrieves the current value of a specified field from the form state.
+   *
+   * @template TName - The name/path of the field to retrieve.
+   * @param name - The field name/path.
+   * @returns The current value of the specified field.
+   */
+  getFieldValue<TName extends FieldName<TFormData>>(
+    name: TName
+  ): FieldValue<TFormData, TName> {
+    //! Dit komt doordat name een path is en niet per se een key
+    return this.store.getState().values[name];
+  }
+
+  /**
+   * Handles the form submission process, updating submission states and invoking the onSubmit callback.
    */
   async handleSubmit() {
     console.log("[handleSubmit");
@@ -150,35 +255,54 @@ class FormApi<TFormData> implements IFormApi<TFormData> {
     this.store.setState({ isSubmitting: true });
 
     try {
-      // Run the submit code
+      // Invoke the onSubmit callback with the current form values
       await this.options.onSubmit?.({ values: this.store.getState().values });
 
-      // Update the store
+      // Update the form state to indicate successful submission
       this.store.setState(() => ({ isSubmitted: true }));
     } catch (err) {
-      throw err;
+      // Handle submission errors as needed
+      console.error("Form submission error:", err);
+      throw err; // Re-throw the error after logging
     } finally {
-      // Clean up
+      // Reset the submitting state regardless of submission outcome
       this.store.setState({ isSubmitting: false });
     }
   }
 }
 
-/* React related components */
+/* ---------------------------- */
+/*       React Integration      */
+/* ---------------------------- */
 
-/* React Field */
+/* ---------------------------- */
+/*         React Field          */
+/* ---------------------------- */
 
+/**
+ * Extends FieldApi with React-specific functionalities.
+ */
 type ReactFieldApi<
   TFormData,
   TName extends FieldName<TFormData>,
   TValue extends Get<TFormData, TName>
 > = FieldApi<TFormData, TName, TValue>;
 
+/**
+ * Custom hook to initialize and manage a FieldApi instance.
+ *
+ * @template TFormData - The shape of the form data.
+ * @template TName - The name/path of the field.
+ * @template TValue - The type of the field's value.
+ * @param opts - Configuration options for the field API.
+ * @returns The initialized FieldApi instance.
+ */
 function useField<
   TFormData,
   TName extends FieldName<TFormData>,
   TValue extends Get<TFormData, TName>
 >(opts: FieldApiOptions<TFormData, TName, TValue>) {
+  // Initialize FieldApi once per component instance
   const [fieldApi] = React.useState<ReactFieldApi<TFormData, TName, TValue>>(
     () => {
       const fieldApi = new FieldApi(opts);
@@ -189,73 +313,152 @@ function useField<
   return fieldApi;
 }
 
+/**
+ * Props for the Field component.
+ */
 interface FieldProps<
   TFormData,
   TName extends FieldName<TFormData>,
   TValue extends Get<TFormData, TName>
 > extends FieldApiOptions<TFormData, TName, TValue> {
+  /**
+   * The form API instance to interact with the form state.
+   */
   formApi: FormApi<TFormData>;
+  /**
+   * Render prop to render the field's UI, receiving the FieldApi instance.
+   */
   children?: (
     fieldApi: ReactFieldApi<TFormData, TName, TValue>
   ) => React.ReactNode;
 }
 
+/**
+ * Simplifies the usage of the Field component by omitting the formApi prop.
+ */
 type InjectedFieldProps<
   TFormData,
   TName extends FieldName<TFormData>,
   TValue extends Get<TFormData, TName>
 > = Omit<FieldProps<TFormData, TName, TValue>, "formApi">;
 
+/**
+ * React component representing a form field.
+ * Utilizes the render props pattern to provide FieldApi functionalities.
+ *
+ * @template TFormData - The shape of the form data.
+ * @template TName - The name/path of the field.
+ * @template TValue - The type of the field's value.
+ * @param props - Props including field name, form API, and render prop.
+ * @returns The rendered field UI or null if no children are provided.
+ */
 function Field<
   TFormData,
   TName extends FieldName<TFormData>,
   TValue extends Get<TFormData, TName>
 >({ formApi, name, children }: FieldProps<TFormData, TName, TValue>) {
+  // Initialize FieldApi using the custom hook
   const fieldApi = useField<TFormData, TName, TValue>({
     name,
     formApi,
   });
+  // Render the field's UI using the provided render prop
   return children?.(fieldApi) ?? null;
 }
 
-/* React Subscribe */
+/* ---------------------------- */
+/*        React Subscribe       */
+/* ---------------------------- */
 
+/**
+ * Props for the Subscribe component.
+ */
 interface SubscribeProps<TFormData, TSelectorResult> {
+  /**
+   * The form API instance to interact with the form state.
+   */
   formApi: FormApi<TFormData>;
+  /**
+   * Selector function to extract a specific part of the form state.
+   */
   selector: (state: FormState<TFormData>) => TSelectorResult;
+  /**
+   * Render prop to render based on the selected form state.
+   */
   children?: (args: { value: TSelectorResult }) => React.ReactNode;
 }
 
+/**
+ * Simplifies the usage of the Subscribe component by omitting the formApi prop.
+ */
 type InjectedSubscribeProps<TFormData, TSelectorResult> = Omit<
   SubscribeProps<TFormData, TSelectorResult>,
   "formApi"
 >;
 
+/**
+ * React component that subscribes to specific parts of the form state.
+ * Utilizes the render props pattern for flexibility.
+ *
+ * @template TFormData - The shape of the form data.
+ * @template TSelectorResult - The type of the selected state slice.
+ * @param props - Props including form API, selector function, and render prop.
+ * @returns The rendered content based on the selected state or null if no children are provided.
+ */
 function Subscribe<TFormData, TSelectorResult>({
   formApi,
   selector,
   children,
 }: SubscribeProps<TFormData, TSelectorResult>) {
+  // Subscribe to the selected part of the form state using Zustand's useStore hook
   const value = useStore(formApi.store, useShallow(selector));
+  // Render the content based on the selected state
   return children?.({ value }) ?? null;
 }
 
-/* React Form */
+/* ---------------------------- */
+/*        ReactFormApi Class    */
+/* ---------------------------- */
 
+/**
+ * Extends the FormApi class to include React-specific components like Subscribe and Field.
+ * This allows for seamless integration of form state management with React components.
+ */
 class ReactFormApi<TFormData> extends FormApi<TFormData> {
+  /**
+   * Initializes a new instance of ReactFormApi and binds methods to preserve `this` context.
+   *
+   * @param opts - Configuration options for the form API.
+   */
   constructor(opts: FormApiOptions<TFormData>) {
     super(opts);
 
+    // Bind methods to ensure correct `this` context when used as React components
     this.Subscribe = this.Subscribe.bind(this);
     this.Field = this.Field.bind(this);
   }
 
+  /**
+   * React component for subscribing to form state changes.
+   *
+   * @template TSelectorResult - The type of the selected state slice.
+   * @param props - Injected props excluding formApi.
+   * @returns The rendered Subscribe component.
+   */
   Subscribe<TSelectorResult>(
     props: InjectedSubscribeProps<TFormData, TSelectorResult>
   ): React.ReactNode {
     return <Subscribe formApi={this} {...props} />;
   }
 
+  /**
+   * React component representing a form field.
+   *
+   * @template TFieldName - The name/path of the field.
+   * @template TFieldData - The type of the field's value.
+   * @param props - Injected props excluding formApi.
+   * @returns The rendered Field component.
+   */
   Field<
     TFieldName extends FieldName<TFormData>,
     TFieldData extends FieldValue<TFormData, TFieldName>
@@ -266,6 +469,18 @@ class ReactFormApi<TFormData> extends FormApi<TFormData> {
   }
 }
 
+/* ---------------------------- */
+/*        useFormApi Hook       */
+/* ---------------------------- */
+
+/**
+ * Custom hook to initialize and manage a ReactFormApi instance.
+ * Ensures that the same formApi instance persists across component re-renders.
+ *
+ * @template TFormData - The shape of the form data.
+ * @param opts - Configuration options for the form API.
+ * @returns The initialized ReactFormApi instance.
+ */
 function useFormApi<TFormData>(opts: FormApiOptions<TFormData>) {
   const [formApi] = React.useState<ReactFormApi<TFormData>>(
     new ReactFormApi<TFormData>(opts)
@@ -274,7 +489,13 @@ function useFormApi<TFormData>(opts: FormApiOptions<TFormData>) {
   return formApi;
 }
 
-/* Testing */
+/* ---------------------------- */
+/*       Usage Example          */
+/* ---------------------------- */
+
+/**
+ * Defines the structure of the form data.
+ */
 
 interface Testing__Data__SimpleForm {
   firstName: string;
