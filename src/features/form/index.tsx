@@ -3,6 +3,7 @@
 import * as React from "react";
 import { createStore, StoreApi } from "zustand/vanilla";
 import { useStore } from "zustand";
+import { useShallow } from "zustand/shallow";
 
 /* Vanilla / Agnostic */
 
@@ -107,7 +108,7 @@ function Subscribe<TFormState extends FormState<unknown>, TSelectorResult>({
   selector,
   children,
 }: SubscribeProps<TFormState, TSelectorResult>) {
-  const value = useStore(store, selector);
+  const value = useStore(store, useShallow(selector));
   return children?.({ value }) ?? null;
 }
 
@@ -161,8 +162,10 @@ export function FormComponent__001() {
         {({ value }) => <span>submissionAttempts: {value}</span>}
       </formApi.Subscribe>
 
-      <formApi.Subscribe selector={(s) => s.isSubmitted}>
-        {({ value }) => <span>isSubmitted: {value ? "yes" : "no"}</span>}
+      <formApi.Subscribe selector={(s) => [s.isSubmitted] as const}>
+        {({ value: [isSubmitted] }) => (
+          <span>isSubmitted: {isSubmitted ? "yes" : "no"}</span>
+        )}
       </formApi.Subscribe>
 
       <button type="submit" className="p-2 rounded">
