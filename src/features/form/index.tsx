@@ -1,11 +1,11 @@
 "use client";
 
-import * as React from "react";
-import * as _ from "lodash-es";
 import { createStore, StoreApi } from "zustand/vanilla";
 import { useStore } from "zustand";
 import { useShallow } from "zustand/shallow";
 import { Get, Paths } from "type-fest";
+import { useState } from "react";
+import { get, set } from "lodash-es";
 
 /* ---------------------------- */
 /*       Utility Types          */
@@ -15,22 +15,25 @@ import { Get, Paths } from "type-fest";
  * Extracts all possible paths within TFormData using bracket notation.
  * Example: For { user: { name: string } }, it would include 'user' and 'user.name'.
  */
-type FieldName<TFormData> = Paths<TFormData, { bracketNotation: true }>;
+type FieldName<TFormData extends object> = Paths<
+  TFormData,
+  { bracketNotation: true }
+>;
 
 /**
  * Retrieves the type of the value at the specified field path within TFormData.
  * Example: For TFormData = { user: { name: string } }, Get<TFormData, 'user.name'> is string.
  */
-type FieldValue<TFormData, TName extends FieldName<TFormData>> = Get<
-  TFormData,
-  TName
->;
+type FieldValue<
+  TFormData extends object,
+  TName extends FieldName<TFormData>
+> = Get<TFormData, TName>;
 
 /**
  * Defines the contract for form operations.
  * Currently includes a method to set the value of a specific field.
  */
-interface IFormApi<TFormData> {
+interface IFormApi<TFormData extends object> {
   /**
    * Sets the value of a specified field.
    *
@@ -56,7 +59,7 @@ interface IFormApi<TFormData> {
  * Options required to initialize a FieldApi instance.
  */
 interface FieldApiOptions<
-  TFormData,
+  TFormData extends object,
   TName extends FieldName<TFormData>,
   TValue extends FieldValue<TFormData, TName>
 > {
@@ -75,7 +78,7 @@ interface FieldApiOptions<
  * Provides methods to set and handle changes to the field's value.
  */
 class FieldApi<
-  TFormData,
+  TFormData extends object,
   TName extends FieldName<TFormData>,
   TValue extends FieldValue<TFormData, TName>
 > {
@@ -128,7 +131,7 @@ class FieldApi<
 /**
  * Represents the state of the form, including field values and submission status.
  */
-interface FormState<TFormData> {
+interface FormState<TFormData extends object> {
   /**
    * The current values of the form fields.
    */
@@ -151,7 +154,7 @@ interface FormState<TFormData> {
  * Configuration options for initializing the FormApi.
  */
 interface FormApiOptions<
-  TFormData,
+  TFormData extends object,
   TSubmitResult extends unknown | void = void
 > {
   /**
@@ -173,7 +176,7 @@ interface FormApiOptions<
  * Manages the overall form state and handles form-level operations like submission.
  * Implements the IFormApi interface to ensure type-safe interactions.
  */
-class FormApi<TFormData> implements IFormApi<TFormData> {
+class FormApi<TFormData extends object> implements IFormApi<TFormData> {
   /**
    * Zustand store instance managing the form state.
    */
@@ -206,6 +209,19 @@ class FormApi<TFormData> implements IFormApi<TFormData> {
   }
 
   /**
+   * Retrieves the current value of a specified field from the form state.
+   *
+   * @template TName - The name/path of the field to retrieve.
+   * @param name - The field name/path.
+   * @returns The current value of the specified field.
+   */
+  getFieldValue<TName extends FieldName<TFormData>>(name: TName) {
+    const value = get(this.store.getState().values, name);
+    if (!value) throw new Error("not found?");
+    return value as FieldValue<TFormData, TName>;
+  }
+
+  /**
    * Sets the value of a specified field within the form state.
    *
    * @template TName - The name/path of the field to update.
@@ -218,26 +234,8 @@ class FormApi<TFormData> implements IFormApi<TFormData> {
     TValue extends FieldValue<TFormData, TName>
   >(name: TName, value: TValue) {
     this.store.setState((s) => ({
-      values: {
-        ...s.values,
-        //TODO this is a very simple implementation that does not work with nested values yet and fricks the type
-        [name]: value, // Update the specific field with the new value
-      },
+      values: set<TFormData>(s.values, name, value),
     }));
-  }
-
-  /**
-   * Retrieves the current value of a specified field from the form state.
-   *
-   * @template TName - The name/path of the field to retrieve.
-   * @param name - The field name/path.
-   * @returns The current value of the specified field.
-   */
-  getFieldValue<TName extends FieldName<TFormData>>(
-    name: TName
-  ): FieldValue<TFormData, TName> {
-    //! Dit komt doordat name een path is en niet per se een key
-    return this.store.getState().values[name];
   }
 
   /**
@@ -283,7 +281,7 @@ class FormApi<TFormData> implements IFormApi<TFormData> {
  * Extends FieldApi with React-specific functionalities.
  */
 type ReactFieldApi<
-  TFormData,
+  TFormData extends object,
   TName extends FieldName<TFormData>,
   TValue extends Get<TFormData, TName>
 > = FieldApi<TFormData, TName, TValue>;
@@ -298,18 +296,16 @@ type ReactFieldApi<
  * @returns The initialized FieldApi instance.
  */
 function useField<
-  TFormData,
+  TFormData extends object,
   TName extends FieldName<TFormData>,
   TValue extends Get<TFormData, TName>
 >(opts: FieldApiOptions<TFormData, TName, TValue>) {
   // Initialize FieldApi once per component instance
-  const [fieldApi] = React.useState<ReactFieldApi<TFormData, TName, TValue>>(
-    () => {
-      const fieldApi = new FieldApi(opts);
+  const [fieldApi] = useState<ReactFieldApi<TFormData, TName, TValue>>(() => {
+    const fieldApi = new FieldApi(opts);
 
-      return fieldApi;
-    }
-  );
+    return fieldApi;
+  });
   return fieldApi;
 }
 
@@ -317,7 +313,7 @@ function useField<
  * Props for the Field component.
  */
 interface FieldProps<
-  TFormData,
+  TFormData extends object,
   TName extends FieldName<TFormData>,
   TValue extends Get<TFormData, TName>
 > extends FieldApiOptions<TFormData, TName, TValue> {
@@ -337,7 +333,7 @@ interface FieldProps<
  * Simplifies the usage of the Field component by omitting the formApi prop.
  */
 type InjectedFieldProps<
-  TFormData,
+  TFormData extends object,
   TName extends FieldName<TFormData>,
   TValue extends Get<TFormData, TName>
 > = Omit<FieldProps<TFormData, TName, TValue>, "formApi">;
@@ -353,7 +349,7 @@ type InjectedFieldProps<
  * @returns The rendered field UI or null if no children are provided.
  */
 function Field<
-  TFormData,
+  TFormData extends object,
   TName extends FieldName<TFormData>,
   TValue extends Get<TFormData, TName>
 >({ formApi, name, children }: FieldProps<TFormData, TName, TValue>) {
@@ -373,7 +369,7 @@ function Field<
 /**
  * Props for the Subscribe component.
  */
-interface SubscribeProps<TFormData, TSelectorResult> {
+interface SubscribeProps<TFormData extends object, TSelectorResult> {
   /**
    * The form API instance to interact with the form state.
    */
@@ -391,7 +387,7 @@ interface SubscribeProps<TFormData, TSelectorResult> {
 /**
  * Simplifies the usage of the Subscribe component by omitting the formApi prop.
  */
-type InjectedSubscribeProps<TFormData, TSelectorResult> = Omit<
+type InjectedSubscribeProps<TFormData extends object, TSelectorResult> = Omit<
   SubscribeProps<TFormData, TSelectorResult>,
   "formApi"
 >;
@@ -405,7 +401,7 @@ type InjectedSubscribeProps<TFormData, TSelectorResult> = Omit<
  * @param props - Props including form API, selector function, and render prop.
  * @returns The rendered content based on the selected state or null if no children are provided.
  */
-function Subscribe<TFormData, TSelectorResult>({
+function Subscribe<TFormData extends object, TSelectorResult>({
   formApi,
   selector,
   children,
@@ -424,7 +420,7 @@ function Subscribe<TFormData, TSelectorResult>({
  * Extends the FormApi class to include React-specific components like Subscribe and Field.
  * This allows for seamless integration of form state management with React components.
  */
-class ReactFormApi<TFormData> extends FormApi<TFormData> {
+class ReactFormApi<TFormData extends object> extends FormApi<TFormData> {
   /**
    * Initializes a new instance of ReactFormApi and binds methods to preserve `this` context.
    *
@@ -481,8 +477,8 @@ class ReactFormApi<TFormData> extends FormApi<TFormData> {
  * @param opts - Configuration options for the form API.
  * @returns The initialized ReactFormApi instance.
  */
-function useFormApi<TFormData>(opts: FormApiOptions<TFormData>) {
-  const [formApi] = React.useState<ReactFormApi<TFormData>>(
+function useFormApi<TFormData extends object>(opts: FormApiOptions<TFormData>) {
+  const [formApi] = useState<ReactFormApi<TFormData>>(
     new ReactFormApi<TFormData>(opts)
   );
 
