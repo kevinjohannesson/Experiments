@@ -61,42 +61,6 @@ const onSubmitFormValidationSchema = v.object({
   Pick<BasicSubscribeToNewsletterForm, "hasAgreedToTermsOfService">
 >;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type TFormData = any;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type TFormValidator = any;
-
-const FormContext = React.createContext(
-  {} as ReactFormExtendedApi<TFormData, TFormValidator | undefined>
-);
-
-function useFormContext<
-  TFormData,
-  TFormValidator extends Validator<TFormData, unknown> | undefined = undefined
->() {
-  const context = React.useContext(FormContext);
-  if (_.isEmpty(context)) {
-    throw new Error("useFormContext must be used within a FormProvider");
-  }
-
-  return context as ReactFormExtendedApi<TFormData, TFormValidator>;
-}
-
-interface FormProviderProps<
-  TFormData,
-  TFormValidator extends Validator<TFormData, unknown> | undefined = undefined
-> {
-  form: ReactFormExtendedApi<TFormData, TFormValidator>;
-  children?: React.ReactNode;
-}
-
-function FormProvider<
-  TFormData,
-  TFormValidator extends Validator<TFormData, unknown> | undefined = undefined
->({ form, children }: FormProviderProps<TFormData, TFormValidator>) {
-  return <FormContext.Provider value={form}>{children}</FormContext.Provider>;
-}
-
 function defaultIssuesTransformer(issues: v.GenericIssue[]) {
   return issues.map((issue) => issue.message).join(", ");
 }
