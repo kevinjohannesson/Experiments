@@ -87,42 +87,57 @@ export class FormApi<TFormData> {
   };
 }
 
+class FieldApi {
+  constructor() {}
+}
+
 /* React */
 
-interface SubscribeProps<
-  TFormState extends FormState<unknown>,
-  TSelectorResult
-> {
-  store: StoreApi<TFormState>;
-  selector: (state: TFormState) => TSelectorResult;
+interface SubscribeProps<TFormData, TSelectorResult> {
+  formApi: FormApi<TFormData>;
+  selector: (state: FormState<TFormData>) => TSelectorResult;
   children?: (args: { value: TSelectorResult }) => React.ReactNode;
 }
 
-type InjectedSubscribeProps<
-  TFormState extends FormState<unknown>,
-  TSelectorResult
-> = Omit<SubscribeProps<TFormState, TSelectorResult>, "store">;
+type InjectedSubscribeProps<TFormData, TSelectorResult> = Omit<
+  SubscribeProps<TFormData, TSelectorResult>,
+  "formApi"
+>;
 
-function Subscribe<TFormState extends FormState<unknown>, TSelectorResult>({
-  store,
+function Subscribe<TFormData, TSelectorResult>({
+  formApi,
   selector,
   children,
-}: SubscribeProps<TFormState, TSelectorResult>) {
-  const value = useStore(store, useShallow(selector));
+}: SubscribeProps<TFormData, TSelectorResult>) {
+  const value = useStore(formApi.store, useShallow(selector));
   return children?.({ value }) ?? null;
+}
+
+interface FieldProps<TFormData> {
+  formApi: FormApi<TFormData>;
+  children?: () => React.ReactNode;
+}
+
+type InjectedFieldProps<TFormData> = Omit<FieldProps<TFormData>, "formApi">;
+
+function Field<TFormData>({ formApi, children }: FieldProps<TFormData>) {
+  return children?.() ?? null;
 }
 
 interface ReactFormApi<TFormData> extends FormApi<TFormData> {
   Subscribe: <TSelectorResult>(
-    props: InjectedSubscribeProps<FormState<TFormData>, TSelectorResult>
+    props: InjectedSubscribeProps<TFormData, TSelectorResult>
   ) => React.ReactNode;
+  Field: (props: InjectedFieldProps<TFormData>) => React.ReactNode;
 }
 
 export function useForm<TFormData>(opts?: FormOptions<TFormData>) {
   const [formApi] = React.useState<ReactFormApi<TFormData>>(() => {
+    const formApi = new FormApi<TFormData>(opts);
     const api: ReactFormApi<TFormData> = {
-      ...new FormApi<TFormData>(opts),
-      Subscribe: (props) => <Subscribe store={api.store} {...props} />,
+      ...formApi,
+      Subscribe: (props) => <Subscribe formApi={formApi} {...props} />,
+      Field: (props) => <Field formApi={formApi} {...props} />,
     };
 
     return api;
@@ -158,6 +173,8 @@ export function FormComponent__001() {
       }}
       className="p-8 flex flex-col gap-2"
     >
+      <h2>State</h2>
+
       <formApi.Subscribe selector={(s) => s.submissionAttempts}>
         {({ value }) => <span>submissionAttempts: {value}</span>}
       </formApi.Subscribe>
