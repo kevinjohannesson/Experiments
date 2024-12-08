@@ -10,26 +10,16 @@
   },
   "dependencies": {
     "@formatjs/intl-localematcher": "^0.5.8",
-    "@hookform/resolvers": "^3.9.1",
     "@mantine/core": "^7.14.2",
-    "@mantine/form": "^7.14.2",
     "@mantine/hooks": "^7.14.2",
     "@tanstack/react-form": "^0.39.0",
-    "@tanstack/valibot-form-adapter": "^0.39.0",
-    "@tanstack/zod-form-adapter": "^0.39.0",
     "debug": "^4.3.7",
     "lodash-es": "^4.17.21",
-    "mantine-form-valibot-resolver": "^3.0.1",
-    "mantine-form-zod-resolver": "^1.1.0",
     "negotiator": "^1.0.0",
     "next": "15.0.3",
-    "patch-package": "^8.0.0",
-    "postinstall-postinstall": "^2.1.0",
     "react": "19.0.0-rc-66855b96-20241106",
     "react-dom": "19.0.0-rc-66855b96-20241106",
-    "react-hook-form": "^7.53.2",
-    "valibot": "^1.0.0-beta.8",
-    "zod": "^3.23.8"
+    "valibot": "^1.0.0-beta.8"
   },
   "devDependencies": {
     "@types/debug": "^4.1.12",

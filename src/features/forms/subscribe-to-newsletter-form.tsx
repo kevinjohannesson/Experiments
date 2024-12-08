@@ -8,6 +8,8 @@ import { TextInput, Checkbox, Button, CheckboxProps } from "@mantine/core";
 import {
   FieldApi,
   FieldValidators,
+  FormOptions,
+  FormValidators,
   useForm,
   Validator,
 } from "@tanstack/react-form";
@@ -15,12 +17,41 @@ import { valibotValidator } from "@tanstack/valibot-form-adapter";
 import { zodValidator } from "@tanstack/zod-form-adapter";
 import * as v from "valibot";
 
-interface BasicSubscribeToNewsletterForm {
+interface SubscribeToNewsletterFormData {
   emailAddress: string;
   hasAgreedToTermsOfService: boolean;
 }
 
-export default function SubscribeToNewsletterForm() {
+type FormSchema<TFormData extends object> = v.BaseSchema<
+  keyof TFormData,
+  TFormData,
+  v.BaseIssue<TFormData>
+>;
+
+type SubscribeToNewsletterFormSchema =
+  FormSchema<SubscribeToNewsletterFormData>;
+
+// type Validators2<TFormData> = FormValidators<TFormData, Validator<TFormData, unknown>>
+
+interface Props {
+  // validationSchema: SubscribeToNewsletterFormSchema;
+  validatorAdapter?: () =>
+    | Validator<SubscribeToNewsletterFormData, unknown>
+    | undefined;
+  validators?: FormValidators<
+    SubscribeToNewsletterFormData,
+    Validator<SubscribeToNewsletterFormData, unknown> | undefined
+  >;
+}
+
+type FormProps<TFormData> = FormOptions<TFormData, undefined>;
+
+type SubscribeToNewsletterFormProps = FormProps<SubscribeToNewsletterFormData>;
+
+export default function SubscribeToNewsletterForm({
+  validators,
+  validatorAdapter,
+}: SubscribeToNewsletterFormProps) {
   console.log("[SubscribeToNewsletterForm]");
 
   const onSubmitFormValidationSchema = v.object({
@@ -34,18 +65,16 @@ export default function SubscribeToNewsletterForm() {
       v.literal(true, "[Form] You must agree to the Terms of Service")
     ),
   }) satisfies v.GenericSchema<
-    Pick<BasicSubscribeToNewsletterForm, "hasAgreedToTermsOfService">
+    Pick<SubscribeToNewsletterForm, "hasAgreedToTermsOfService">
   >;
 
   const form = useForm({
     defaultValues: {
       emailAddress: "",
       hasAgreedToTermsOfService: false,
-    } as BasicSubscribeToNewsletterForm,
-    validatorAdapter: valibotValidator(),
-    validators: {
-      onSubmit: onSubmitFormValidationSchema,
-    },
+    } as SubscribeToNewsletterForm,
+    validatorAdapter: validatorAdapter?.(),
+    validators,
     onSubmit: async ({ value }) => {
       // Handle form submission
       console.log(

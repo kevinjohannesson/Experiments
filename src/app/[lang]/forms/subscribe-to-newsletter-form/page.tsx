@@ -11,6 +11,12 @@ export default async function Page(props: {
     <>
       <Title>Subscribe to newsletter form</Title>
 
+      <Title order={2}>Default</Title>
+
+      <SubscribeToNewsletterForm />
+
+      <Title order={2}>Without ToS agreement</Title>
+
       <SubscribeToNewsletterForm />
     </>
   );
