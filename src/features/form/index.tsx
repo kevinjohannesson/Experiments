@@ -92,7 +92,7 @@ interface FieldMetaDataState {
    */
   isTouched: boolean;
   /**
-   * The field is currently blurred (no focus).
+   * The field was blurred (lost focus) or is currently blurred.
    */
   isBlurred: boolean;
   /**
