@@ -11,6 +11,7 @@ interface Hobby {
 interface Person {
   firstName: string;
   lastName: string;
+  age: number;
   hobbies: Hobby[];
 }
 
@@ -18,6 +19,7 @@ const formOpts = formOptions<Person>({
   defaultValues: {
     firstName: "",
     lastName: "",
+    age: NaN,
     hobbies: [],
   },
 });

@@ -3,7 +3,7 @@
 import { createStore, StoreApi } from "zustand/vanilla";
 import { useStore } from "zustand";
 import { useShallow } from "zustand/shallow";
-import { Get, Paths } from "type-fest";
+import { Get, PartialDeep, Paths } from "type-fest";
 import { useState } from "react";
 import { get, set } from "lodash-es";
 
@@ -178,7 +178,7 @@ interface FormApiOptions<
   /**
    * The default values for the form fields.
    */
-  defaultValues: TFormData;
+  defaultValues?: PartialDeep<TFormData>;
   /**
    * Callback function to handle form submission.
    *
@@ -209,7 +209,7 @@ class FormApi<TFormData extends object> implements IFormApi<TFormData> {
    *
    * @param opts - Configuration options for the form API.
    */
-  constructor(opts: FormApiOptions<TFormData>) {
+  constructor(opts?: FormApiOptions<TFormData>) {
     console.log("[FormApi]");
     this.options = opts || {};
 
@@ -218,7 +218,7 @@ class FormApi<TFormData extends object> implements IFormApi<TFormData> {
       isSubmitted: false,
       isSubmitting: false,
       submissionAttempts: 0,
-      values: opts.defaultValues,
+      values: (opts?.defaultValues ?? {}) as TFormData,
     }));
 
     // Bind methods to preserve `this` context when passed as callbacks
@@ -231,11 +231,16 @@ class FormApi<TFormData extends object> implements IFormApi<TFormData> {
    *
    * @template TName - The name/path of the field to retrieve.
    * @param name - The field name/path.
+   * @param opts - The options for value retrieval.
+   * @param opts.strict - Throws error when value is not found.
    * @returns The current value of the specified field.
    */
-  getFieldValue<TName extends FieldName<TFormData>>(name: TName) {
+  getFieldValue<TName extends FieldName<TFormData>>(
+    name: TName,
+    opts?: { strict: boolean }
+  ) {
     const value = get(this.store.getState().values, name);
-    if (!value) {
+    if (!value && opts?.strict) {
       throw new FieldValueNotFoundError(name);
     }
 
@@ -618,20 +623,7 @@ interface FormData__002 {
 export function FormComponent__002() {
   console.log("[FormComponent__002]");
   const formApi = useFormApi<FormData__002>({
-    defaultValues: {
-      user: {
-        firstName: "",
-        lastName: "",
-        age: undefined,
-        address: {
-          street: "",
-          number: undefined,
-          city: "",
-        },
-      },
-      email: "",
-      isAdmin: false,
-    },
+    defaultValues: {},
     onSubmit: ({ values }) => {
       console.log("[FormComponent__002.onSubmit]");
       console.log({ values });
