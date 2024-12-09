@@ -74,6 +74,16 @@ interface IFormApi<TFormData extends object> {
 /* ---------------------------- */
 
 /**
+ * Represents the state of the field.
+ */
+interface FieldState {
+  /**
+   * Indicates whether the field has received focus.
+   */
+  isTouched: boolean;
+}
+
+/**
  * Options required to initialize a FieldApi instance.
  */
 interface FieldApiOptions<
@@ -108,6 +118,10 @@ class FieldApi<
    * Reference to the form API for interacting with the form state.
    */
   formApi: IFormApi<TFormData>;
+  /**
+   * Zustand store instance managing the field state.
+   */
+  store: StoreApi<FieldState>;
 
   /**
    * Initializes a new instance of FieldApi.
@@ -117,6 +131,11 @@ class FieldApi<
   constructor(opts: FieldApiOptions<TFormData, TName, TValue>) {
     this.name = opts.name;
     this.formApi = opts.formApi;
+
+    // Initialize Zustand store with default field state
+    this.store = createStore<FieldState>(() => ({
+      isTouched: false,
+    }));
 
     // Bind methods to preserve `this` context when passed as callbacks
     this.setValue = this.setValue.bind(this);
@@ -140,6 +159,29 @@ class FieldApi<
   handleChange(value: TValue) {
     this.setValue(value);
   }
+
+  /**
+   * Handles the blur event for the field, typically from user input.
+   */
+  handleBlur = () => {
+    const isTouched = this.store.getState().isTouched;
+    if (!isTouched) {
+      this.store.setState({ isTouched: true });
+    }
+    // if (!prevTouched) {
+    //   this.setMeta((prev) => ({ ...prev, isTouched: true }))
+    //   this.validate('change')
+    // }
+    // if (!this.state.meta.isBlurred) {
+    //   this.setMeta((prev) => ({ ...prev, isBlurred: true }))
+    // }
+    // this.validate('blur')
+
+    // this.options.listeners?.onBlur?.({
+    //   value: this.state.value,
+    //   fieldApi: this,
+    // })
+  };
 }
 
 /* ---------------------------- */
@@ -474,15 +516,15 @@ class ReactFormApi<TFormData extends object> extends FormApi<TFormData> {
   /**
    * React component representing a form field.
    *
-   * @template TFieldName - The name/path of the field.
-   * @template TFieldData - The type of the field's value.
+   * @template TName - The name/path of the field.
+   * @template TValue - The type of the field's value.
    * @param props - Injected props excluding formApi.
    * @returns The rendered Field component.
    */
   Field<
-    TFieldName extends FieldName<TFormData>,
-    TFieldData extends FieldValue<TFormData, TFieldName>
-  >(props: InjectedFieldProps<TFormData, TFieldName, TFieldData>): ReactNode {
+    TName extends FieldName<TFormData>,
+    TValue extends FieldValue<TFormData, TName>
+  >(props: InjectedFieldProps<TFormData, TName, TValue>): ReactNode {
     return <Field formApi={this} {...props} />;
   }
 }
@@ -508,12 +550,8 @@ function useFormApi<TFormData extends object>(opts: FormApiOptions<TFormData>) {
 }
 
 /* ---------------------------- */
-/*       Usage Example          */
+/*   Testing/Usage Examples     */
 /* ---------------------------- */
-
-/**
- * Defines the structure of the form data.
- */
 
 interface Testing__Data__SimpleForm {
   firstName: string;
@@ -527,6 +565,43 @@ type Testing__Type_IFormApi__SimpleForm = IFormApi<Testing__Data__SimpleForm>;
 interface FormData__001 {
   firstName: string;
   lastName: string;
+}
+
+function FieldMetaDataBooleanEntry<
+  TFormData extends object,
+  TName extends FieldName<TFormData>,
+  TValue extends FieldValue<TFormData, TName>
+>({
+  fieldApi,
+  entry,
+}: {
+  fieldApi: ReactFieldApi<TFormData, TName, TValue>;
+  entry: keyof FieldState;
+}) {
+  console.log("[FieldMetaDataEntry");
+  const state = useStore(
+    fieldApi.store,
+    useShallow((s) => s[entry])
+  );
+  return (
+    <pre>
+      {entry}: {state ? "yes" : "no"}
+    </pre>
+  );
+}
+
+function FieldMetaData<
+  TFormData extends object,
+  TName extends FieldName<TFormData>,
+  TValue extends FieldValue<TFormData, TName>
+>({ fieldApi }: { fieldApi: ReactFieldApi<TFormData, TName, TValue> }) {
+  console.log("[FieldMetaData");
+  return (
+    <div>
+      <h3>Field meta</h3>
+      <FieldMetaDataBooleanEntry fieldApi={fieldApi} entry="isTouched" />
+    </div>
+  );
 }
 
 export function FormComponent__001() {
@@ -574,7 +649,11 @@ export function FormComponent__001() {
 
             <label className="flex flex-col gap-1 mt-4">
               <span>First name</span>
-              <input onChange={(e) => fieldApi.handleChange(e.target.value)} />
+              <input
+                onChange={(e) => fieldApi.handleChange(e.target.value)}
+                onBlur={fieldApi.handleBlur}
+              />
+              <FieldMetaData fieldApi={fieldApi} />
             </label>
           </div>
         )}
@@ -588,7 +667,10 @@ export function FormComponent__001() {
 
             <label className="flex flex-col gap-1 mt-4">
               <span>First name</span>
-              <input onChange={(e) => fieldApi.handleChange(e.target.value)} />
+              <input
+                onChange={(e) => fieldApi.handleChange(e.target.value)}
+                onBlur={fieldApi.handleBlur}
+              />
             </label>
           </div>
         )}
