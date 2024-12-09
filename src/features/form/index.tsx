@@ -405,13 +405,23 @@ class FormApi<TFormData extends object> implements IFormApi<TFormData> {
 /* ---------------------------- */
 
 /**
- * Extends FieldApi with React-specific functionalities.
+ * Extends the FieldApi class to include React-specific components.
+ * This allows for seamless integration of form state management with React components.
  */
-type ReactFieldApi<
+class ReactFieldApi<
   TFormData extends object,
   TName extends FieldName<TFormData>,
   TValue extends Get<TFormData, TName>
-> = FieldApi<TFormData, TName, TValue>;
+> extends FieldApi<TFormData, TName, TValue> {
+  /**
+   * Initializes a new instance of ReactFormApi and binds methods to preserve `this` context.
+   *
+   * @param opts - Configuration options for the form API.
+   */
+  constructor(opts: FieldApiOptions<TFormData, TName, TValue>) {
+    super(opts);
+  }
+}
 
 /**
  * Custom hook to initialize and manage a FieldApi instance.
@@ -428,12 +438,10 @@ function useField<
   TValue extends Get<TFormData, TName>
 >(opts: FieldApiOptions<TFormData, TName, TValue>) {
   // Initialize FieldApi once per component instance
-  const [fieldApi] = useState<ReactFieldApi<TFormData, TName, TValue>>(() => {
-    const fieldApi = new FieldApi(opts);
-
-    return fieldApi;
-  });
-  return fieldApi;
+  const [api] = useState<ReactFieldApi<TFormData, TName, TValue>>(
+    new ReactFieldApi(opts)
+  );
+  return api;
 }
 
 /**
