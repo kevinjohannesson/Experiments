@@ -74,25 +74,39 @@ interface IFormApi<TFormData extends object> {
 /* ---------------------------- */
 
 /**
- * Represents the state of the field.
+ * Represents interaction-based states of a field.
  */
-interface FieldState {
+interface FieldInteractionState {
   /**
-   * Indicates whether the field has received focus for the first time and was subsequently blurred.
+   * The field currently has focus.
+   */
+  hasFocus: boolean;
+}
+
+/**
+ * Represents the metadata of a field in a form.
+ */
+interface FieldMetaDataState {
+  /**
+   * The field was focused at least once and then blurred.
    */
   isTouched: boolean;
   /**
-   * Indicates whether has been blurred.
+   * The field is currently blurred (no focus).
    */
   isBlurred: boolean;
   /**
-   * Indicates whether the value of the field has been modified.
+   * The field's value has changed from its initial value.
    */
   isDirty: boolean;
-  /**
-   * Indicates whether the field currently has focus.
-   */
-  hasFocus: boolean;
+}
+
+/**
+ * Represents the state of the field.
+ */
+interface FieldState {
+  metadata: FieldMetaDataState;
+  interaction: FieldInteractionState;
 }
 
 /**
@@ -146,10 +160,14 @@ class FieldApi<
 
     // Initialize Zustand store with default field state
     this.store = createStore<FieldState>(() => ({
-      isTouched: false,
-      isBlurred: false,
-      isDirty: false,
-      hasFocus: false,
+      interaction: {
+        hasFocus: false,
+      },
+      metadata: {
+        isTouched: false,
+        isBlurred: false,
+        isDirty: false,
+      },
     }));
 
     // Subscribe to state changes for common actions
@@ -184,20 +202,30 @@ class FieldApi<
    * Handles the focus event for the field, typically from user input.
    */
   handleFocus = () => {
-    this.store.setState({ hasFocus: true });
+    this.store.setState((s) => ({
+      interaction: {
+        ...s.interaction,
+        hasFocus: true,
+      },
+    }));
   };
 
   /**
    * Handles the blur event for the field, typically from user input.
    */
   handleBlur = () => {
-    const { isTouched, isBlurred } = this.store.getState();
+    const {
+      metadata: { isTouched, isBlurred },
+    } = this.store.getState();
 
-    this.store.setState({
-      isTouched: true,
-      hasFocus: false,
-      isBlurred: true,
-    });
+    this.store.setState((s) => ({
+      interaction: {
+        ...s.interaction,
+        isTouched: true,
+        hasFocus: false,
+        isBlurred: true,
+      },
+    }));
 
     // if (!prevTouched) {
     //   this.setMeta((prev) => ({ ...prev, isTouched: true }))
@@ -598,25 +626,29 @@ interface FormData__001 {
   lastName: string;
 }
 
+type BooleanFieldPaths<T extends object> = {
+  [K in FieldName<T>]: FieldValue<T, K> extends boolean ? K : never;
+}[FieldName<T>];
+
 function FieldMetaDataBooleanEntry<
   TFormData extends object,
   TName extends FieldName<TFormData>,
   TValue extends FieldValue<TFormData, TName>
 >({
   fieldApi,
-  entry,
+  path,
 }: {
   fieldApi: ReactFieldApi<TFormData, TName, TValue>;
-  entry: keyof FieldState;
+  path: BooleanFieldPaths<FieldState>;
 }) {
   console.log("[FieldMetaDataEntry");
   const state = useStore(
     fieldApi.store,
-    useShallow((s) => s[entry])
+    useShallow((s) => get(s, path))
   );
   return (
     <pre>
-      {entry}: {state ? "yes" : "no"}
+      {path}: {state ? "yes" : "no"}
     </pre>
   );
 }
@@ -630,9 +662,18 @@ function FieldMetaData<
   return (
     <div>
       <h3>Field meta</h3>
-      <FieldMetaDataBooleanEntry fieldApi={fieldApi} entry="isTouched" />
-      <FieldMetaDataBooleanEntry fieldApi={fieldApi} entry="isBlurred" />
-      <FieldMetaDataBooleanEntry fieldApi={fieldApi} entry="hasFocus" />
+      <FieldMetaDataBooleanEntry
+        fieldApi={fieldApi}
+        path="metadata.isTouched"
+      />
+      <FieldMetaDataBooleanEntry
+        fieldApi={fieldApi}
+        path="metadata.isBlurred"
+      />
+      <FieldMetaDataBooleanEntry
+        fieldApi={fieldApi}
+        path="interaction.hasFocus"
+      />
     </div>
   );
 }
