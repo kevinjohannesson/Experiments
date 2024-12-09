@@ -8,6 +8,24 @@ import { useState } from "react";
 import { get, set } from "lodash-es";
 
 /* ---------------------------- */
+/*       Custom Errors          */
+/* ---------------------------- */
+
+/**
+ * Custom error thrown when a field value cannot be found in the form state.
+ */
+class FieldValueNotFoundError extends Error {
+  constructor(fieldName: string) {
+    super(`Field value for "${fieldName}" was not found in the form state.`);
+    this.name = "FieldValueNotFoundError";
+    // Maintains proper stack trace for where our error was thrown (only works in V8 engines)
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, FieldValueNotFoundError);
+    }
+  }
+}
+
+/* ---------------------------- */
 /*       Utility Types          */
 /* ---------------------------- */
 
@@ -217,7 +235,10 @@ class FormApi<TFormData extends object> implements IFormApi<TFormData> {
    */
   getFieldValue<TName extends FieldName<TFormData>>(name: TName) {
     const value = get(this.store.getState().values, name);
-    if (!value) throw new Error("not found?");
+    if (!value) {
+      throw new FieldValueNotFoundError(name);
+    }
+
     return value as FieldValue<TFormData, TName>;
   }
 
@@ -234,7 +255,7 @@ class FormApi<TFormData extends object> implements IFormApi<TFormData> {
     TValue extends FieldValue<TFormData, TName>
   >(name: TName, value: TValue) {
     this.store.setState((s) => ({
-      values: set<TFormData>(s.values, name, value),
+      values: set(s.values, name, value),
     }));
   }
 
@@ -520,6 +541,8 @@ export function FormComponent__001() {
     },
   });
 
+  // const value = formApi.getFieldValue("firstName");
+
   return (
     <form
       onSubmit={(e) => {
@@ -557,6 +580,103 @@ export function FormComponent__001() {
       </formApi.Field>
 
       <formApi.Field name="lastName">
+        {(fieldApi) => (
+          <div className="border border-solid border-black p-2">
+            <h3>Field state</h3>
+            <pre>name: {fieldApi.name}</pre>
+
+            <label className="flex flex-col gap-1 mt-4">
+              <span>First name</span>
+              <input onChange={(e) => fieldApi.handleChange(e.target.value)} />
+            </label>
+          </div>
+        )}
+      </formApi.Field>
+
+      <button type="submit" className="p-2 mt-4 rounded">
+        Submit
+      </button>
+    </form>
+  );
+}
+
+interface FormData__002 {
+  user: {
+    firstName: string;
+    lastName: string;
+    age: number;
+    address: {
+      street: string;
+      number: number;
+      city: string;
+    };
+  };
+  email: string;
+  isAdmin: boolean;
+}
+
+export function FormComponent__002() {
+  console.log("[FormComponent__002]");
+  const formApi = useFormApi<FormData__002>({
+    defaultValues: {
+      user: {
+        firstName: "",
+        lastName: "",
+        age: undefined,
+        address: {
+          street: "",
+          number: undefined,
+          city: "",
+        },
+      },
+      email: "",
+      isAdmin: false,
+    },
+    onSubmit: ({ values }) => {
+      console.log("[FormComponent__002.onSubmit]");
+      console.log({ values });
+    },
+  });
+
+  // const value = formApi.getFieldValue("user.firstName");
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        formApi.handleSubmit();
+      }}
+      className="p-8 flex flex-col gap-2"
+    >
+      <h2>Form state</h2>
+
+      <formApi.Subscribe selector={(s) => s.submissionAttempts}>
+        {({ value }) => <pre>submissionAttempts: {value}</pre>}
+      </formApi.Subscribe>
+
+      <formApi.Subscribe selector={(s) => [s.isSubmitted] as const}>
+        {({ value: [isSubmitted] }) => (
+          <pre>isSubmitted: {isSubmitted ? "yes" : "no"}</pre>
+        )}
+      </formApi.Subscribe>
+
+      <h2 className="mt-8">Fields</h2>
+
+      <formApi.Field name="user.firstName">
+        {(fieldApi) => (
+          <div className="border border-solid border-black p-2">
+            <h3>Field state</h3>
+            <pre>name: {fieldApi.name}</pre>
+
+            <label className="flex flex-col gap-1 mt-4">
+              <span>First name</span>
+              <input onChange={(e) => fieldApi.handleChange(e.target.value)} />
+            </label>
+          </div>
+        )}
+      </formApi.Field>
+
+      <formApi.Field name="user.lastName">
         {(fieldApi) => (
           <div className="border border-solid border-black p-2">
             <h3>Field state</h3>
