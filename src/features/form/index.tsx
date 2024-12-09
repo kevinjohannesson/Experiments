@@ -137,6 +137,11 @@ class FieldApi<
       isTouched: false,
     }));
 
+    // Subscribe to state changes for common actions
+    this.store.subscribe((state) => {
+      console.log("State changed:", state);
+    });
+
     // Bind methods to preserve `this` context when passed as callbacks
     this.setValue = this.setValue.bind(this);
     this.handleChange = this.handleChange.bind(this);
@@ -164,8 +169,8 @@ class FieldApi<
    * Handles the blur event for the field, typically from user input.
    */
   handleBlur = () => {
-    const isTouched = this.store.getState().isTouched;
-    if (!isTouched) {
+    const wasTouched = this.store.getState().isTouched;
+    if (!wasTouched) {
       this.store.setState({ isTouched: true });
     }
     // if (!prevTouched) {
@@ -604,6 +609,40 @@ function FieldMetaData<
   );
 }
 
+function TextField<
+  TFormData extends object,
+  TName extends FieldName<TFormData>,
+  TValue extends FieldValue<TFormData, TName>
+>({
+  formApi,
+  name,
+  label,
+}: {
+  formApi: ReactFormApi<TFormData>;
+  name: TName;
+  label: string;
+}) {
+  return (
+    <formApi.Field name={name}>
+      {(fieldApi) => (
+        <div className="border border-solid border-black p-2">
+          <h3>Field state</h3>
+          <pre>name: {fieldApi.name}</pre>
+
+          <label className="flex flex-col gap-1 mt-4">
+            <span>{label}</span>
+            <input
+              onChange={(e) => fieldApi.handleChange(e.target.value as TValue)}
+              onBlur={fieldApi.handleBlur}
+            />
+            <FieldMetaData fieldApi={fieldApi} />
+          </label>
+        </div>
+      )}
+    </formApi.Field>
+  );
+}
+
 export function FormComponent__001() {
   console.log("[FormComponent__001]");
   const formApi = useFormApi<FormData__001>({
@@ -641,40 +680,9 @@ export function FormComponent__001() {
 
       <h2 className="mt-8">Fields</h2>
 
-      <formApi.Field name="firstName">
-        {(fieldApi) => (
-          <div className="border border-solid border-black p-2">
-            <h3>Field state</h3>
-            <pre>name: {fieldApi.name}</pre>
+      <TextField formApi={formApi} name={"firstName"} label="First name" />
 
-            <label className="flex flex-col gap-1 mt-4">
-              <span>First name</span>
-              <input
-                onChange={(e) => fieldApi.handleChange(e.target.value)}
-                onBlur={fieldApi.handleBlur}
-              />
-              <FieldMetaData fieldApi={fieldApi} />
-            </label>
-          </div>
-        )}
-      </formApi.Field>
-
-      <formApi.Field name="lastName">
-        {(fieldApi) => (
-          <div className="border border-solid border-black p-2">
-            <h3>Field state</h3>
-            <pre>name: {fieldApi.name}</pre>
-
-            <label className="flex flex-col gap-1 mt-4">
-              <span>First name</span>
-              <input
-                onChange={(e) => fieldApi.handleChange(e.target.value)}
-                onBlur={fieldApi.handleBlur}
-              />
-            </label>
-          </div>
-        )}
-      </formApi.Field>
+      <TextField formApi={formApi} name={"lastName"} label="Last name" />
 
       <button type="submit" className="p-2 mt-4 rounded">
         Submit
