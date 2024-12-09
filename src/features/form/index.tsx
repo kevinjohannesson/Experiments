@@ -452,7 +452,7 @@ class ReactFormApi<TFormData extends object> extends FormApi<TFormData> {
    *
    * @param opts - Configuration options for the form API.
    */
-  constructor(opts: FormApiOptions<TFormData>) {
+  constructor(opts?: FormApiOptions<TFormData>) {
     super(opts);
 
     // Bind methods to ensure correct `this` context when used as React components
