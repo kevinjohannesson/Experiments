@@ -4,7 +4,7 @@ import { createStore, StoreApi } from "zustand/vanilla";
 import { useStore } from "zustand";
 import { useShallow } from "zustand/shallow";
 import { Get, PartialDeep, Paths } from "type-fest";
-import { useState } from "react";
+import { ReactNode, useState } from "react";
 import { get, set } from "lodash-es";
 
 /* ---------------------------- */
@@ -350,9 +350,7 @@ interface FieldProps<
   /**
    * Render prop to render the field's UI, receiving the FieldApi instance.
    */
-  children?: (
-    fieldApi: ReactFieldApi<TFormData, TName, TValue>
-  ) => React.ReactNode;
+  children?: (fieldApi: ReactFieldApi<TFormData, TName, TValue>) => ReactNode;
 }
 
 /**
@@ -407,7 +405,7 @@ interface SubscribeProps<TFormData extends object, TSelectorResult> {
   /**
    * Render prop to render based on the selected form state.
    */
-  children?: (args: { value: TSelectorResult }) => React.ReactNode;
+  children?: (args: { value: TSelectorResult }) => ReactNode;
 }
 
 /**
@@ -469,7 +467,7 @@ class ReactFormApi<TFormData extends object> extends FormApi<TFormData> {
    */
   Subscribe<TSelectorResult>(
     props: InjectedSubscribeProps<TFormData, TSelectorResult>
-  ): React.ReactNode {
+  ): ReactNode {
     return <Subscribe formApi={this} {...props} />;
   }
 
@@ -484,9 +482,7 @@ class ReactFormApi<TFormData extends object> extends FormApi<TFormData> {
   Field<
     TFieldName extends FieldName<TFormData>,
     TFieldData extends FieldValue<TFormData, TFieldName>
-  >(
-    props: InjectedFieldProps<TFormData, TFieldName, TFieldData>
-  ): React.ReactNode {
+  >(props: InjectedFieldProps<TFormData, TFieldName, TFieldData>): ReactNode {
     return <Field formApi={this} {...props} />;
   }
 }
@@ -504,11 +500,11 @@ class ReactFormApi<TFormData extends object> extends FormApi<TFormData> {
  * @returns The initialized ReactFormApi instance.
  */
 function useFormApi<TFormData extends object>(opts: FormApiOptions<TFormData>) {
-  const [formApi] = useState<ReactFormApi<TFormData>>(
+  const [api] = useState<ReactFormApi<TFormData>>(
     new ReactFormApi<TFormData>(opts)
   );
 
-  return formApi;
+  return api;
 }
 
 /* ---------------------------- */
