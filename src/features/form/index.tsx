@@ -78,9 +78,21 @@ interface IFormApi<TFormData extends object> {
  */
 interface FieldState {
   /**
-   * Indicates whether the field has received focus.
+   * Indicates whether the field has received focus for the first time and was subsequently blurred.
    */
   isTouched: boolean;
+  /**
+   * Indicates whether has been blurred.
+   */
+  isBlurred: boolean;
+  /**
+   * Indicates whether the value of the field has been modified.
+   */
+  isDirty: boolean;
+  /**
+   * Indicates whether the field currently has focus.
+   */
+  hasFocus: boolean;
 }
 
 /**
@@ -135,6 +147,9 @@ class FieldApi<
     // Initialize Zustand store with default field state
     this.store = createStore<FieldState>(() => ({
       isTouched: false,
+      isBlurred: false,
+      isDirty: false,
+      hasFocus: false,
     }));
 
     // Subscribe to state changes for common actions
@@ -166,13 +181,24 @@ class FieldApi<
   }
 
   /**
+   * Handles the focus event for the field, typically from user input.
+   */
+  handleFocus = () => {
+    this.store.setState({ hasFocus: true });
+  };
+
+  /**
    * Handles the blur event for the field, typically from user input.
    */
   handleBlur = () => {
-    const wasTouched = this.store.getState().isTouched;
-    if (!wasTouched) {
-      this.store.setState({ isTouched: true });
-    }
+    const { isTouched, isBlurred } = this.store.getState();
+
+    this.store.setState({
+      isTouched: true,
+      hasFocus: false,
+      isBlurred: true,
+    });
+
     // if (!prevTouched) {
     //   this.setMeta((prev) => ({ ...prev, isTouched: true }))
     //   this.validate('change')
@@ -605,6 +631,8 @@ function FieldMetaData<
     <div>
       <h3>Field meta</h3>
       <FieldMetaDataBooleanEntry fieldApi={fieldApi} entry="isTouched" />
+      <FieldMetaDataBooleanEntry fieldApi={fieldApi} entry="isBlurred" />
+      <FieldMetaDataBooleanEntry fieldApi={fieldApi} entry="hasFocus" />
     </div>
   );
 }
@@ -625,18 +653,30 @@ function TextField<
   return (
     <formApi.Field name={name}>
       {(fieldApi) => (
-        <div className="border border-solid border-black p-2">
-          <h3>Field state</h3>
-          <pre>name: {fieldApi.name}</pre>
+        <div className="border border-solid border-black p-2 flex flex-col gap-4">
+          <div>
+            <h3>Field state</h3>
+            <div className="border border-solid border-black p-2">
+              <pre>name: {fieldApi.name}</pre>
+            </div>
+          </div>
 
-          <label className="flex flex-col gap-1 mt-4">
-            <span>{label}</span>
-            <input
-              onChange={(e) => fieldApi.handleChange(e.target.value as TValue)}
-              onBlur={fieldApi.handleBlur}
-            />
+          <div>
+            <h3>Field input</h3>
+            <label className="flex gap-4 border border-solid border-black p-2">
+              <span>{label}</span>
+              <input
+                onChange={(e) =>
+                  fieldApi.handleChange(e.target.value as TValue)
+                }
+                onBlur={fieldApi.handleBlur}
+                onFocus={fieldApi.handleFocus}
+              />
+            </label>
+          </div>
+          <div className="border border-solid border-black p-2">
             <FieldMetaData fieldApi={fieldApi} />
-          </label>
+          </div>
         </div>
       )}
     </formApi.Field>
